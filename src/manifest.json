@@ -1,0 +1,14 @@
+{
+    "name": "PandoraBox ipbandwidth",
+    "manifest_version": 2,
+    "version": "1.0",
+    "description": "I can see the IP bandwidth",
+    "icons": { "128": "images/logo.png" },
+    "browser_action": {
+        "default_icon": "images/logo.png",
+        "default_popup": "views/popup.html"
+    },
+    "permissions": [
+        "http://*/*"
+    ]
+}

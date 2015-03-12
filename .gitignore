@@ -1,0 +1,8 @@
+## System Cache File
+.DS_Store
+Thumbs.db
+
+## Cache Folder
+node_modules/
+build/
+public/
