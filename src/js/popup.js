@@ -7,11 +7,12 @@ var keys = ["ip", "sdown", "sup"];
 var second = 1.2;
 window.onload = function () {
     var routeIp = window.localStorage.getItem('routeIp');
-    $("#frm_loading")[0].style.display = "none";
+    document.getElementById("frm_loading").style.display = "none";
     if (!routeIp) {
-        $("#frm_login")[0].style.display = "block";
+        document.getElementById("frm_login").style.display = "block";
+        isLogin = false;
     } else {
-        $("#frm_bandwidth")[0].style.display = "block";
+        document.getElementById("frm_bandwidth").style.display = "block";
         isLogin = true;
     }
     setInterval(function () {
@@ -32,8 +33,10 @@ window.onload = function () {
 					_obj.up = _data[3] / 1024; // Bype -> KB
 					if (content[_obj.mac]) {
 						content[_obj.mac].ip = _obj.ip;
-						content[_obj.mac].sdown = (_obj.down - content[_obj.mac].down) / (newDate - oldDate);
-						content[_obj.mac].sup = (_obj.up - content[_obj.mac].up) / (newDate - oldDate);
+						content[_obj.mac].sdown =
+							(_obj.down - content[_obj.mac].down) / (newDate - oldDate);
+						content[_obj.mac].sup =
+							(_obj.up - content[_obj.mac].up) / (newDate - oldDate);
 						content[_obj.mac].down = _obj.down;
 						content[_obj.mac].up = _obj.up;
 					} else {
@@ -51,18 +54,43 @@ window.onload = function () {
 		});
     }, second * 1000);
 }
-$("#input_ok")[0].onclick = function () {
-	var ip = $("#input_ip")[0].value;
+var url = "http://%ip%/cgi-bin/luci/",
+	pathname = "bandwidth/sys/ipbandwidth";
+document.getElementById("input_ok").onclick = function () {
+	var ip = document.getElementById("input_ip").value;
 	if (!ip.length || ip.length == 0) return;
-	var url = "http://" + ip + "/cgi-bin/luci/bandwidth/sys/ipbandwidth";
-	$("#frm_loading")[0].style.display = "block";
-	$("#frm_login")[0].style.display = "none";
+	// @TODO ip判断
+	url = url.replace("%ip%", ip);
+	document.getElementById("frm_loading").style.display = "block";
+	document.getElementById("frm_login").style.display = "none";
+	CheckIP(url);
+};
+document.getElementById("btn_logout").onclick = function () {
+	document.getElementById("input_ip").value = window.localStorage.getItem('routeIp');
+	document.getElementById("frm_login").style.display = "block";
+	document.getElementById("frm_bandwidth").style.display = "none";
+	window.localStorage.setItem('routeIp', "");
+	isLogin = false;
+};
+var CheckIP = function () {
 	$.ajax({
 		url: url,
 		success: function (data) {
+			CheckMoulde(url);
+		},
+		error: function () {
+			document.getElementById("frm_login").style.display = "block";
+			document.getElementById("frm_loading").style.display = "none";
+		}
+	});
+};
+var CheckMoulde = function () {
+	$.ajax({
+		url: url + pathname,
+		success: function (data) {
 			window.localStorage.setItem('routeIp', $("#input_ip")[0].value);
-			$("#frm_bandwidth")[0].style.display = "block";
-			$("#frm_loading")[0].style.display = "none";
+			document.getElementById("frm_bandwidth").style.display = "block";
+			document.getElementById("frm_loading").style.display = "none";
 			oldDate = newDate = data.date;
 			data.data.forEach (function (item) {
 				var _data = item.split(" "),
@@ -72,21 +100,14 @@ $("#input_ok")[0].onclick = function () {
 				_obj.down = _data[2] / 1024; // Bype -> KB
 				_obj.up = _data[3] / 1024; // Bype -> KB
 				_obj.sdown = _obj.sup = 0;
-			})
+			});
         	isLogin = true;
 		},
 		error: function () {
-			$("#frm_login")[0].style.display = "block";
-			$("#frm_loading")[0].style.display = "none";
+			document.getElementById("frm_login").style.display = "block";
+			document.getElementById("frm_loading").style.display = "none";
 		}
 	});
-};
-$("#btn_logout")[0].onclick = function () {
-	document.getElementById("input_ip").value = window.localStorage.getItem('routeIp');
-	document.getElementById("frm_login").style.display = "block";
-	document.getElementById("frm_bandwidth").style.display = "none";
-	window.localStorage.setItem('routeIp', "");
-	isLogin = false;
 };
 var transfor = function (value) {
 	var _value = "";
