@@ -5,7 +5,7 @@ module.exports = function(grunt) {
         temp: "build/"
 	};
     var _pkg = grunt.file.readJSON('package.json');
-    _pag.name = _pkg.name.replace('[Chrome]', '')
+    _pkg.name = _pkg.name.replace('[Chrome]', '')
 	grunt.initConfig({
         clean: {
             tmp: {
