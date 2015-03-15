@@ -3,17 +3,19 @@ var isLogin = false,
 	isGetting = false;
 var oldDate = 0, newDate,
 	content = [];
+var url = "http://%ip%/cgi-bin/luci/",
+	pathname = "bandwidth/sys/ipbandwidth";
 var keys = ["ip", "sdown", "sup"];
 var second = 1.2;
 window.onload = function () {
     var routeIp = window.localStorage.getItem('routeIp');
-    document.getElementById("frm_loading").style.display = "none";
     if (!routeIp) {
+    	document.getElementById("frm_loading").style.display = "none";
         document.getElementById("frm_login").style.display = "block";
         isLogin = false;
     } else {
-        document.getElementById("frm_bandwidth").style.display = "block";
-        isLogin = true;
+		url = url.replace("%ip%", routeIp);
+    	CheckPandorabox();
     }
     setInterval(function () {
     	if (!isLogin || isGetting) return;
@@ -54,8 +56,6 @@ window.onload = function () {
 		});
     }, second * 1000);
 }
-var url = "http://%ip%/cgi-bin/luci/",
-	pathname = "bandwidth/sys/ipbandwidth";
 document.getElementById("input_ok").onclick = function () {
 	var ip = document.getElementById("input_ip").value;
 	if (!ip.length || ip.length == 0) return;
@@ -63,7 +63,7 @@ document.getElementById("input_ok").onclick = function () {
 	url = url.replace("%ip%", ip);
 	document.getElementById("frm_loading").style.display = "block";
 	document.getElementById("frm_login").style.display = "none";
-	CheckIP(url);
+	CheckPandorabox();
 };
 document.getElementById("btn_logout").onclick = function () {
 	document.getElementById("input_ip").value = window.localStorage.getItem('routeIp');
@@ -72,7 +72,7 @@ document.getElementById("btn_logout").onclick = function () {
 	window.localStorage.setItem('routeIp', "");
 	isLogin = false;
 };
-var CheckIP = function () {
+var CheckPandorabox = function () {
 	$.ajax({
 		url: url,
 		success: function (data) {
