@@ -54,23 +54,29 @@
 		});
 	};
 	var analysisData = function (data) {
-		if (data.version)
-			version = data.version;
-		if (data.version_num)
-			version_num = data.version_num;
-		if (data.date) {
+		if (data.module_version)
+			version = data.module_version;
+		if (data.module_version_num)
+			version_num = data.module_version_num;
+		var date
+		if (version_num) {
+			date = data.content.date
+		} else {
+			date = data.date
+		}
+		if (date) {
 			if (oldDate === 0) {
-				oldDate = newDate = data.date;
-			} else if (newDate == data.date) {
+				oldDate = newDate = date;
+			} else if (newDate == date) {
 				return;
 			} else {
 				oldDate = newDate;
-				newDate = data.date;
+				newDate = date;
 			}
 		}
 		var arr = [];
 		if (version_num) {
-			arr = data.data;
+			arr = data.content.data;
 		} else {
 			data.data.forEach (function (item) {
 				var _data = item.split(" "),
@@ -191,6 +197,7 @@
 		$("#frm_bandwidth")[0].style.display = "none";
 		$("#input_ip")[0].value = window.localStorage.getItem('routeIp');
 		window.localStorage.setItem('routeIp', "");
+		content = [];
 		isLogin = false;
 	};
 
