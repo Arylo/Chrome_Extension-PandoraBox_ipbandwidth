@@ -1,0 +1,18 @@
+{
+    "globalstrict": true,
+    "es3": true,
+    "strict": true,
+    "newcap": false,
+    "undef": true,
+    "globals": {
+        "window": true,
+        "require": true,
+        "module": true,
+        "console": true,
+
+        "setInterval": true,
+        "clearInterval": true,
+
+        "angular": true
+    }
+}

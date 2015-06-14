@@ -1,259 +1,310 @@
 'use strict';
 
-(function (global) {
-	var isLogin = false;
-	var version,
-		version_num;
-	var routeIp,
-		oldDate = 0, newDate = 0,
-		second = 1.2,
-		content = [];
+(function () {
 	var url = "http://%ip%/cgi-bin/luci/",
 		pathname,
 		pathname_api = "api/bandwidth/ipbandwidth",
 		pathname_old = "bandwidth/sys/ipbandwidth",
 		_url;
-	var trTpl = null,
-		_trTpl = null;
-	var checkOpenwrt = function (ipaddr) {
-		if (ipaddr)
-			_url = url.replace("%ip%", ipaddr);
-		else
-			return false;
-		$.ajax({
-			url: _url,
-			success: function (data) {
-				checkApiModule(ipaddr);
-			},
-			error: function () {
-				$("#frm_login")[0].style.display = "block";
-				$("#frm_loading")[0].style.display = "none";
-				isLogin = false;
-			}
-		});
-	};
-	var checkApiModule = function (ipaddr) {
-		if (ipaddr)
-			_url = url.replace("%ip%", ipaddr) + pathname_api;
-		else
-			return false;
-		$.ajax({
-			url: _url,
-			success: function (data) {
-				window.localStorage.setItem('routeIp', ipaddr);
-				pathname = pathname_api;
-				$("#frm_bandwidth")[0].style.display = "block";
-				$("#frm_loading")[0].style.display = "none";
-				$("#navbar div span")[0].innerHTML = "Api Mode";
 
-				analysisData(data);
+	var app = angular.module("ipbandwidth", ["ngRoute"], angular.noop);
 
-				changeTable();
-				isLogin = true;
-			},
-			error: function () {
-				checkOldModule(ipaddr);
-			}
-		});
-	};
-	var checkOldModule = function (ipaddr) {
-		if (ipaddr)
-			_url = url.replace("%ip%", ipaddr) + pathname_old;
-		else
-			return false;
-		$.ajax({
-			url: _url,
-			success: function (data) {
-				window.localStorage.setItem('routeIp', ipaddr);
-				pathname = pathname_old;
-				$("#frm_bandwidth")[0].style.display = "block";
-				$("#frm_loading")[0].style.display = "none";
-				$("#navbar div span")[0].innerHTML = "Old Mode";
-
-				analysisData(data);
-
-				changeTable();
-				isLogin = true;
-			},
-			error: function () {
-				$("#frm_login")[0].style.display = "block";
-				$("#frm_loading")[0].style.display = "none";
-			}
-		});
-	};
-	var analysisData = function (data) {
-		if (data.module_version)
-			version = data.module_version;
-		if (data.module_version_num)
-			version_num = data.module_version_num;
-		var date
-		if (version_num) {
-			date = data.content.date
-		} else {
-			date = data.date
-		}
-		if (date) {
-			if (oldDate === 0) {
-				oldDate = newDate = date;
-			} else if (newDate == date) {
-				return;
-			} else {
-				oldDate = newDate;
-				newDate = date;
-			}
-		}
-		var arr = [];
-		if (version_num) {
-			arr = data.content.data;
-		} else {
-			data.data.forEach (function (item) {
-				var _data = item.split(" "),
-					_obj = {};
-				_obj.ip = _data[0];
-				_obj.mac = _data[1];
-				_obj.download = _data[2];
-				_obj.upload = _data[3];
-
-				arr[arr.length] = _obj;
+	app.config(["$routeProvider", function ($routeProvider) {
+		$routeProvider
+			.when("/", {
+				redirectTo: '/loading'
+			})
+			.when("/loading", {
+				templateUrl: "/views/tpl-load.html",
+				controller: "LoadCtrl"
+			})
+			.when("/login", {
+				templateUrl: "/views/tpl-login.html",
+				controller: "InputCtrl"
+			})
+			.when("/list", {
+				templateUrl: "/views/tpl-show.html",
+				controller: "ShowCtrl"
+			})
+			.otherwise({
+				redirectTo: '/loading'
 			});
-		}
-		arr.forEach (function (item) {
-			var _obj = item;
-			if (newDate < oldDate)
-				return;
-			if (content[_obj.mac]) {
-				var obj = content[_obj.mac];
-				// Old IP
-				if (obj.ip == _obj.ip &&
-					obj.download == _obj.download &&
-					obj.upload == _obj.upload) {
-					obj.sdown = 0;
-					obj.sup = 0;
-					return;
+	}]);
+
+	app.service("Data", [function () {
+		this.routingTable = {
+			"login": {
+				"path": "/login"
+			},
+			"loading": {
+				"path": "/loading"
+			},
+			"list": {
+				"path": "/list"
+			}
+		};
+		this.DEBUG = false;
+		this.isStart = true;
+		this.content = [];
+		this.array = [];
+		this.oldDate = 0;
+		this.newDate = 0;
+		this.second = 1.2;
+	}]);
+
+	app.service("Fn", ["$location", "Data", function ($location, Data) {
+		this.jump = function (key) {
+			$location.path(Data.routingTable[key].path);
+		};
+		this.checkIp = function (ipaddr, _option) {
+			var options = {
+				ingoreLocal: true,
+				ingoreZero: true
+			};
+			if (_option && typeof(_option) == 'object') {
+				for (var i in _option)
+					options[i] = _option[i];
+			}
+			return (function () {
+				var reg = /^(\d{1,3}\.){3}\d{1,3}$/;
+				if (reg.test(ipaddr)) {
+					if (!options.ingoreLocal && ipaddr == "127.0.0.1") return false;
+					if (!options.ingoreZero && ipaddr == "0.0.0.0") return false;
+					var ipArr = ipaddr.split("."),
+						isOutBound = true;
+					ipArr.forEach(function (ipp) {
+						if (ipp > 255 || ipp < 0)
+							isOutBound = false;
+					});
+					return isOutBound;
 				}
-				obj.ip = _obj.ip;
-				obj.sdown = (_obj.download - obj.download) / (newDate - oldDate);
-				obj.download = _obj.download;
-				obj.sup = (_obj.upload - obj.upload) / (newDate - oldDate);
-				obj.upload = _obj.upload;
-			} else {
-				// New IP
-				_obj.sdown = _obj.sup = "Loading...";
-				content[_obj.mac] = _obj;
+				return false;
+			})();
+		};
+		var transfor = this.transfor = function (value) {
+			var _value = 0;
+			if (/^\d+$/.test(value))
+				_value = Number(value);
+			else
+				_value = 0;
+			var type = "B";
+			if (value > 1073741824)
+				type = "GB";
+			else if (value > 1024576)
+				type = "MB";
+			else if (value > 1024)
+				type = "KB";
+			else
+				type = "B";
+			// KB -> XB
+			switch (type) {
+				case "B":
+					_value = value;
+					break;
+				case 'KB':
+					_value = value / 1024;
+					break;
+				case 'MB':
+					_value = value / 1024576;
+					break;
+				case 'GB':
+					_value = value / 1073741824;
+					break;
 			}
-		});
-	};
-	var changeTable = function () {
-		var arr = content;
-		var table = $("tbody")[0];
-		var obj, tr, tds;
-		for (var key in arr) {
-			obj = arr[key];
-			tr = document.getElementById("ipbandwidth-" + obj.mac.replace(/:/g, ""));
-			if (tr) {
-				// Tr is Exist
-				tds = $("td", tr);
-				tds[0].innerHTML = obj.ip;
-				tds[1].innerHTML = transfor(obj.sdown) + "/s";
-				tds[2].innerHTML = transfor(obj.sup) + "/s";
+			_value = _value.toFixed(2);
+			return _value + " " + type;
+		};
+		this.analysisData = function (data) {
+			if (data.module_version)
+				Data.version = data.module_version;
+			if (data.module_version_num)
+				Data.version_num = data.module_version_num;
+			var date;
+			if (Data.version_num) {
+				date = data.content.date;
 			} else {
-				// Tr isnot Exist
-				_trTpl = trTpl.cloneNode(true);
-				tr = _trTpl.childNodes[0];
-				tr.id = "ipbandwidth-" + obj.mac.replace(/:/g, "");
-				tds = $("td", tr);
-				tds[0].innerHTML = obj.ip;
-				tds[1].innerHTML = obj.sdown;
-				tds[2].innerHTML = obj.sup;
-				table.appendChild(_trTpl);
+				date = data.date;
 			}
-		}
-	};
-	if (!global.changeTable) global.changeTable = changeTable;
-	var transfor = function (value) {
-		var _value = 0;
-		if (value == "Loading...")
-			_value = 0;
-		else
-			_value = Number(value);
-		var type = "B";
-		if (value > 1073741824)
-			type = "GB"
-		else if (value > 1024576)
-			type = "MB";
-		else if (value > 1024)
-			type = "KB";
-		else
-			type = "B";
-		// KB -> XB
-		switch (type) {
-			case "B":
-				_value = value;
-				break;
-			case 'KB':
-				_value = value / 1024;
-				break;
-			case 'MB':
-				_value = value / 1024576;
-				break;
-			case 'GB':
-				_value = value / 1073741824;
-				break;
-		}
-		_value = _value.toFixed(2);
-		return _value + " " + type;
-	};
-	// onclick
-	$("#input_ok")[0].onclick = function () {
-		var ipaddr = $("#input_ip")[0].value;
-		if (!ipaddr.length || ipaddr.length == 0) return;
-		if (/^\d+\.\d+\.\d+\.\d+$/.test(ipaddr)) {
-			var points = ipaddr.split(".");
-			points.forEach(function (num) {
-				if (num < 0 || num > 255)
-					return false;
+			if (date) {
+				if (Data.oldDate === 0) {
+					Data.oldDate = Data.newDate = date;
+				} else if (Data.newDate == date) {
+					return;
+				} else {
+					Data.oldDate = Data.newDate;
+					Data.newDate = date;
+				}
+			}
+			var arr = [];
+			if (Data.version_num) {
+				arr = data.content.data;
+			} else {
+				data.data.forEach (function (item) {
+					var _data = item.split(" "),
+						_obj = {};
+					_obj.ip = _data[0];
+					_obj.mac = _data[1];
+					_obj.download = _data[2];
+					_obj.upload = _data[3];
+
+					arr[arr.length] = _obj;
+				});
+			}
+			// data -> Data.content
+			arr.forEach (function (item) {
+				var _obj = item;
+				if (Data.newDate < Data.oldDate)
+					return;
+				if (Data.content[_obj.mac]) {
+					var obj = Data.content[_obj.mac];
+					// Old IP
+					if (obj.ip == _obj.ip &&
+						obj.download == _obj.download &&
+						obj.upload == _obj.upload) {
+						obj.sdown = "0.00 B/s";
+						obj.sup = "0.00 B/s";
+						return;
+					}
+					obj.ip = _obj.ip;
+					obj.sdown = transfor((_obj.download - obj.download) / (Data.newDate - Data.oldDate)) + "/s";
+					obj.download = _obj.download;
+					obj.sup = transfor((_obj.upload - obj.upload) / (Data.newDate - Data.oldDate)) + "/s";
+					obj.upload = _obj.upload;
+				} else {
+					// New IP
+					_obj.sdown = _obj.sup = "Loading...";
+					Data.content[_obj.mac] = _obj;
+				}
 			});
-		} else
-			return false;
-
-		$("#frm_loading")[0].style.display = "block";
-		$("#frm_login")[0].style.display = "none";
-		checkOpenwrt(ipaddr);
-	};
-	$("#btn_logout")[0].onclick = function () {
-		$("#frm_login")[0].style.display = "block";
-		$("#frm_bandwidth")[0].style.display = "none";
-		$("#input_ip")[0].value = window.localStorage.getItem('routeIp');
-		window.localStorage.setItem('routeIp', "");
-		content = [];
-		isLogin = false;
-	};
-
-	// Start
-	routeIp = window.localStorage.getItem("routeIp");
-	trTpl = document.createDocumentFragment();
-	trTpl.appendChild($("tbody tr")[0]);
-	if (routeIp) {
-		checkOpenwrt(routeIp);
-	} else {
-		$("#frm_loading")[0].style.display = "none";
-		$("#frm_login")[0].style.display = "block";
-		isLogin = false;
-	}
-
-	setInterval(function () {
-		if (!isLogin) return;
-		var _url,
-			ipaddr = window.localStorage.getItem("routeIp");
-		_url = url.replace("%ip%", ipaddr) + pathname;
-		$.ajax({
-			url: _url,
-			success: function (data) {
-				analysisData(data);
-				changeTable();
-			},
-			error: function () {
+			// data -> Data.array
+			Data.array = [];
+			var item = null;
+			for (var key in Data.content) {
+				item = Data.content[key];
+				Data.array[Data.array.length] = item;
 			}
-		});
-	}, second * 1000);
-})(typeof window !== undefined? window: this);
+		};
+	}]);
+
+	app.controller("LoadCtrl", ["$scope", "$http", "$location" , "Data", "Fn",
+		function ($scope, $http, $location, Data, Fn) {
+		if (Data.DEBUG) console.info("LoadCtrl");
+		var ipaddr = null;
+		var checkPandorabox = function () {
+			if (Data.DEBUG) console.info("checkPandorabox");
+			_url = url.replace("%ip%", ipaddr);
+			if (Data.DEBUG) console.log("checkPandorabox", _url);
+			$http.get(_url)
+				.success(function () {
+					checkApiModule();
+				})
+				.error(function () {
+					Fn.jump("login");
+				});
+		};
+		var checkApiModule = function () {
+			if (Data.DEBUG) console.info("checkApiModule");
+			_url = url.replace("%ip%", ipaddr) + pathname_api;
+			if (Data.DEBUG) console.log("checkApiModule", _url);
+			$http.get(_url)
+				.success(function (data) {
+					Data.mode = "Api Mode";
+					Data.url = _url;
+					Data.ipaddr = ipaddr;
+					Data.pathname = pathname_api;
+
+					window.localStorage.setItem("routeIp", ipaddr);
+					Fn.analysisData(data);
+					Fn.jump("list");
+				})
+				.error(function () {
+					checkOldModule();
+				});
+		};
+		var checkOldModule = function () {
+			if (Data.DEBUG) console.info("checkOldModule");
+			_url = url.replace("%ip%", ipaddr) + pathname_old;
+			if (Data.DEBUG) console.log("checkOldModule", _url);
+			$http.get(_url)
+				.success(function (data) {
+					Data.mode = "Old Mode";
+					Data.url = _url;
+					Data.ipaddr = ipaddr;
+					Data.pathname = pathname_old;
+
+					window.localStorage.setItem("routeIp", ipaddr);
+					Fn.analysisData(data);
+					Fn.jump("list");
+				})
+				.error(function () {
+					Fn.jump("login");
+				});
+		};
+		if (Data.isStart) {
+			if (window.localStorage.getItem("routeIp") &&
+				Fn.checkIp(window.localStorage.getItem("routeIp")))
+				ipaddr = window.localStorage.getItem("routeIp");
+			else {
+				Data.isStart = false;
+				Fn.jump("login");
+				return;
+			}
+		} else {
+			ipaddr = Data._ipaddr;
+		}
+		if (ipaddr)
+			checkPandorabox();
+		else {
+			Data.isStart = false;
+			Fn.jump("login");
+			return;
+		}
+
+		Data.isStart = false;
+	}]);
+
+	app.controller("InputCtrl", ["$scope", "$location", "Data", "Fn",
+		function ($scope, $location, Data, Fn) {
+		if (Data.DEBUG) console.info("InputCtrl");
+		Data.isStart = false;
+		$scope.login = function () {
+			if (!Fn.checkIp($scope._ipaddr)) {
+				// @TODO Warning
+				return;
+			}
+			Data._ipaddr = $scope._ipaddr;
+			Fn.jump("loading");
+		};
+	}]);
+
+	app.controller("ShowCtrl", ["$scope", "$http", "$timeout", "Data", "Fn",
+		function ($scope, $http, $timeout, Data, Fn) {
+		if (Data.DEBUG) console.info("ShowCtrl");
+		var content = $scope.content = Data.array;
+		var timer = null;
+		$scope.mode = Data.mode;
+		$scope.exit = function () {
+			Data.content = [];
+			clearInterval(timer);
+			window.localStorage.setItem("routeIp", null);
+			Fn.jump("login");
+		};
+
+		var getData = function () {
+			$http.get(Data.url)
+				.success (function (data) {
+					Fn.analysisData(data);
+				})
+				.error (function () {
+
+				});
+		};
+
+		if (!Data.array || Data.array.length === 0) {
+			getData();
+		}
+		timer = setInterval(function () {
+			getData();
+		}, Data.second * 1000);
+	}]);
+})();

@@ -1,3 +1,5 @@
+"use strict";
+
 module.exports = function(grunt) {
 	var paths = {
         main: "src/",
@@ -5,7 +7,7 @@ module.exports = function(grunt) {
         temp: "build/"
 	};
     var _pkg = grunt.file.readJSON('package.json');
-    _pkg.name = _pkg.name.replace('[Chrome]', '')
+    _pkg.name = _pkg.name.replace('[Chrome]', '');
 	grunt.initConfig({
         clean: {
             tmp: {
@@ -42,6 +44,13 @@ module.exports = function(grunt) {
                 filter: "isFile"
         	}
         },
+        jshint: {
+            options: {
+                jshintrc: true,
+                force: true
+            },
+            main: ["./gruntfile.js", "./src/js/*.js"]
+        },
         compress: {
             main: {
                 options: {
@@ -55,11 +64,7 @@ module.exports = function(grunt) {
         }
 	});
 	grunt.registerTask('default', ["deploy"]);
-	grunt.registerTask('deploy', ["clean", "copy", "cssmin", "uglify", "compress"]);
+	grunt.registerTask('deploy', ["clean", "copy", "cssmin", "jshint", "uglify", "compress"]);
 
-	grunt.loadNpmTasks('grunt-contrib-clean');
-	grunt.loadNpmTasks('grunt-contrib-copy');
-    grunt.loadNpmTasks('grunt-contrib-cssmin');
-    grunt.loadNpmTasks('grunt-contrib-uglify');
-	grunt.loadNpmTasks('grunt-contrib-compress');
-}
+	require('load-grunt-tasks')(grunt);
+};

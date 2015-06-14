@@ -1,0 +1,26 @@
+<div id="frm_bandwidth">
+	<div id="navbar" class="navbar">
+		<div>
+			<span ng-bind="mode"></span>
+		</div>
+		<div id="navbar_right" class="navbar_right">
+			<a class="navbar_right_item" href="javascript:;" ng-click="exit()">注销</a>
+		</div>
+	</div>
+	<table>
+		<thead>
+			<tr>
+				<th>IP</th>
+				<th>Download</th>
+				<th>Upload</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr ng-repeat="(key, value) in content">
+				<td ng-bind="value.ip"></td>
+				<td ng-bind="value.sdown"></td>
+				<td ng-bind="value.sup"></td>
+			</tr>
+		</tbody>
+	</table>
+</div>
