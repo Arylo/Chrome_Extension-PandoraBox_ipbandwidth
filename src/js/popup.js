@@ -9,7 +9,9 @@
 		second = 1.2,
 		content = [];
 	var url = "http://%ip%/cgi-bin/luci/",
-		pathname = "bandwidth/sys/ipbandwidth",
+		pathname,
+		pathname_api = "api/bandwidth/ipbandwidth",
+		pathname_old = "bandwidth/sys/ipbandwidth",
 		_url;
 	var trTpl = null,
 		_trTpl = null;
@@ -21,7 +23,7 @@
 		$.ajax({
 			url: _url,
 			success: function (data) {
-				checkModule(ipaddr);
+				checkApiModule(ipaddr);
 			},
 			error: function () {
 				$("#frm_login")[0].style.display = "block";
@@ -30,17 +32,43 @@
 			}
 		});
 	};
-	var checkModule = function (ipaddr) {
+	var checkApiModule = function (ipaddr) {
 		if (ipaddr)
-			_url = url.replace("%ip%", ipaddr) + pathname;
+			_url = url.replace("%ip%", ipaddr) + pathname_api;
 		else
 			return false;
 		$.ajax({
 			url: _url,
 			success: function (data) {
 				window.localStorage.setItem('routeIp', ipaddr);
+				pathname = pathname_api;
 				$("#frm_bandwidth")[0].style.display = "block";
 				$("#frm_loading")[0].style.display = "none";
+				$("#navbar div span")[0].innerHTML = "Api Mode";
+
+				analysisData(data);
+
+				changeTable();
+				isLogin = true;
+			},
+			error: function () {
+				checkOldModule(ipaddr);
+			}
+		});
+	};
+	var checkOldModule = function (ipaddr) {
+		if (ipaddr)
+			_url = url.replace("%ip%", ipaddr) + pathname_old;
+		else
+			return false;
+		$.ajax({
+			url: _url,
+			success: function (data) {
+				window.localStorage.setItem('routeIp', ipaddr);
+				pathname = pathname_old;
+				$("#frm_bandwidth")[0].style.display = "block";
+				$("#frm_loading")[0].style.display = "none";
+				$("#navbar div span")[0].innerHTML = "Old Mode";
 
 				analysisData(data);
 

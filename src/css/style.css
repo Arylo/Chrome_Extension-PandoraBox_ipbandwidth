@@ -22,14 +22,15 @@ td {
 	height: 100%;
 	width: 100%;
 }
-.navbar_right {
+.navbar {
 	position: relative;
 	width: 100%;
 	min-height: 16px;
 }
-.navbar_right_item {
+.navbar_right {
 	position: absolute;
 	right: 0;
+	top: 0;
 }
 .loading_text {
 	text-align: center;
