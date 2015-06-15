@@ -2,7 +2,7 @@
     "name": "PandoraBox ipbandwidth",
     "manifest_version": 2,
     "version": "1.4",
-    "description": "I can see the IP bandwidth",
+    "description": "PandoraBox 流量查看器",
     "icons": {
         "32": "images/logo_32.png",
         "64": "images/logo_64.png",
