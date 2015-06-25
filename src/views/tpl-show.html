@@ -10,6 +10,7 @@
 	<table>
 		<thead>
 			<tr>
+				<th ng-show="isHostname">Name</th>
 				<th>IP</th>
 				<th>Download</th>
 				<th>Upload</th>
@@ -17,6 +18,7 @@
 		</thead>
 		<tbody>
 			<tr ng-repeat="(key, value) in content">
+				<td ng-bind="value.name" ng-show="isHostname"></td>
 				<td ng-bind="value.ip"></td>
 				<td ng-bind="value.sdown"></td>
 				<td ng-bind="value.sup"></td>

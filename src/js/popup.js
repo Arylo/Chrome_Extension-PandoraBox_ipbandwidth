@@ -5,6 +5,7 @@
 		pathname,
 		pathname_api = "api/bandwidth/ipbandwidth",
 		pathname_old = "bandwidth/sys/ipbandwidth",
+		pathname_hostname = "api/lan/clients",
 		_url;
 
 	var app = angular.module("ipbandwidth", ["ngRoute"], angular.noop);
@@ -173,6 +174,7 @@
 				} else {
 					// New IP
 					_obj.sdown = _obj.sup = "Loading...";
+					_obj.name = "[Unknow]";
 					Data.content[_obj.mac] = _obj;
 				}
 			});
@@ -183,6 +185,14 @@
 				item = Data.content[key];
 				Data.array[Data.array.length] = item;
 			}
+		};
+
+		this.analysisHostname = function (data) {
+			var content = data.content;
+			content.forEach(function (item) {
+				if (Data.content[item.macaddr] && item.hostname)
+					Data.content[item.macaddr].name = item.hostname;
+			});
 		};
 	}]);
 
@@ -209,7 +219,7 @@
 			$http.get(_url)
 				.success(function (data) {
 					Data.mode = "Api Mode";
-					Data.url = _url;
+					Data.ipbandwidthUrl = _url;
 					Data.ipaddr = ipaddr;
 					Data.pathname = pathname_api;
 
@@ -228,7 +238,7 @@
 			$http.get(_url)
 				.success(function (data) {
 					Data.mode = "Old Mode";
-					Data.url = _url;
+					Data.ipbandwidthUrl = _url;
 					Data.ipaddr = ipaddr;
 					Data.pathname = pathname_old;
 
@@ -282,16 +292,19 @@
 		if (Data.DEBUG) console.info("ShowCtrl");
 		var content = $scope.content = Data.array;
 		var timer = null;
+		var isHostname = $scope.isHostname = false;
+		var checkNum = 0;
 		$scope.mode = Data.mode;
 		$scope.exit = function () {
 			Data.content = [];
+			isHostname = false;
 			clearInterval(timer);
 			window.localStorage.setItem("routeIp", null);
 			Fn.jump("login");
 		};
 
-		var getData = function () {
-			$http.get(Data.url)
+		var getIpbandwidth = function () {
+			$http.get(Data.ipbandwidthUrl)
 				.success (function (data) {
 					Fn.analysisData(data);
 				})
@@ -299,12 +312,42 @@
 
 				});
 		};
+		var getHostName = function () {
+			if (!/api/i.test(Data.mode))
+				return;
+			var _url;
+			if (!Data.hostnameUrl)
+				_url = url.replace("%ip%", Data.ipaddr) + pathname_hostname;
+			else
+				_url = Data.hostnameUrl;
+			$http.get(_url)
+				.success(function (data) {
+					if (data.code !== 0)
+						return;
+					else if (!isHostname) {
+						isHostname = true;
+						Data.hostnameUrl = _url;
+					}
+					Fn.analysisHostname(data);
+				});
+		};
 
-		if (!Data.array || Data.array.length === 0) {
-			getData();
-		}
+		// Init Data
+		getIpbandwidth();
+		getHostName();
+
 		timer = setInterval(function () {
-			getData();
+			getIpbandwidth();
+			if (isHostname) {
+				if (checkNum === 0) {
+					getHostName();
+				}
+				checkNum ++;
+				// 120 time
+				if (checkNum >= 120) {
+					checkNum = 0;
+				}
+			}
 		}, Data.second * 1000);
 	}]);
 })();
